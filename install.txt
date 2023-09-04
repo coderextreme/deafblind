@@ -1,0 +1,21 @@
+############### installation of twisted
+
+# Windows (Git for Windows with Git Bash)
+
+$ py -m venv venv  # py is python for Windows.
+
+$ source venv/Scripts/activate # activate Python virtual environment
+
+$ python -m pip install --upgrade pip 
+
+$ pip install twisted  # install Twisted Python
+
+$ pip install opencv-python  # install cv2
+
+$ pip install mediapipe
+
+pip install zope.interface
+python -m pip install --upgrade pywin32
+python Scripts/pywin32_postinstall.py -install  # if line above fails
+pip install tox  # for testing twisted
+python -I -m pip install "tox-wheel>=0.6.0" "tox<4" "tox>=3.24.1" "virtualenv>=20.7.2"  # for getting tox to work with twisted

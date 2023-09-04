@@ -1,0 +1,182 @@
+# sgpt --code "translate american sign language signing video to english textual paragraphs"
+import cv2
+import mediapipe as mp
+import mediapipe.python.solutions.drawing_styles as ds
+import typing
+import numpy as np
+from twisted.internet import reactor, threads
+from twisted.internet.protocol import Protocol, ClientFactory
+from queue import Queue
+from twisted.internet.task import LoopingCall
+from twisted.python import log
+
+
+
+mp_hands = mp.solutions.hands.HandLandmark
+
+hand = [[mp_hands.WRIST, "WRIST", "radiocarpal"],
+[mp_hands.THUMB_CMC, "THUMB_CMC", "carpometacarpal_1"],
+[mp_hands.THUMB_MCP, "THUMB_MCP", "metacarpophalangeal_1"],
+[mp_hands.THUMB_IP, "THUMB_IP", "carpal_interphalangeal_1"],
+[mp_hands.THUMB_TIP, "THUMB_TIP", "carpal_distal_phalanx_1"],
+[mp_hands.INDEX_FINGER_MCP, "INDEX_FINGER_MCP", "metacarpophalangeal_2"],
+[mp_hands.INDEX_FINGER_PIP, "INDEX_FINGER_PIP", "carpal_proximal_interphalangeal_2"],
+[mp_hands.INDEX_FINGER_DIP, "INDEX_FINGER_DIP", "carpal_distal_interphalangeal_2"],
+[mp_hands.INDEX_FINGER_TIP, "INDEX_FINGER_TIP", "carpal_distal_phalanx_2"],
+[mp_hands.MIDDLE_FINGER_MCP, "MIDDLE_FINGER_MCP", "metacarpophalangeal_3"],
+[mp_hands.MIDDLE_FINGER_PIP, "MIDDLE_FINGER_PIP", "carpal_proximal_interphalangeal_3"],
+[mp_hands.MIDDLE_FINGER_DIP, "MIDDLE_FINGER_DIP", "carpal_distal_interphalangeal_3"],
+[mp_hands.MIDDLE_FINGER_TIP, "MIDDLE_FINGER_TIP", "carpal_distal_phalanx_3"],
+[mp_hands.RING_FINGER_MCP, "RING_FINGER_MCP", "metacarpophalangeal_4"],
+[mp_hands.RING_FINGER_PIP, "RING_FINGER_PIP", "carpal_proximal_interphalangeal_4"],
+[mp_hands.RING_FINGER_DIP, "RING_FINGER_DIP", "carpal_distal_interphalangeal_4"],
+[mp_hands.RING_FINGER_TIP, "RING_FINGER_TIP", "carpal_distal_phalanx_4"],
+[mp_hands.PINKY_MCP, "PINKY_MCP", "metacarpophalangeal_5"],
+[mp_hands.PINKY_PIP, "PINKY_PIP", "carpal_proximal_interphalangeal_5"],
+[mp_hands.PINKY_DIP, "PINKY_DIP", "carpal_distal_interphalangeal_5"],
+[mp_hands.PINKY_TIP, "PINKY_TIP", "carpal_distal_phalanx_5"]]
+
+# Load the MediaPipe Sign Language Detection model
+mp_holistic = mp.solutions.holistic
+holistic = mp_holistic.Holistic()
+
+# Load the MediaPipe Drawing utils for visualization
+mp_drawing = mp.solutions.drawing_utils
+
+# load MedidPipe hands solutions
+
+# Load the video file
+# video_path = "path_to_video_file.mp4"
+video_path = 0
+cap = cv2.VideoCapture(video_path)
+
+class MessageSenderProtocol(Protocol):
+   def __init__(self, message_queue):
+       self.message_queue = message_queue
+
+   def connectionMade(self):
+       self.sendNextMessage()
+
+   def sendNextMessage(self):
+       while not self.message_queue.empty():
+           message = self.message_queue.get()
+           self.transport.write(message.encode())
+
+   def connectionLost(self, reason):
+       reactor.stop()
+
+class MessageSenderFactory(ClientFactory):
+   def __init__(self, message_queue):
+       self.message_queue = message_queue
+
+   def buildProtocol(self, addr):
+       return MessageSenderProtocol(self.message_queue)
+
+   def clientConnectionFailed(self, connector, reason):
+       log.err(reason)
+       reactor.stop()
+
+def produceMessages(message_queue):
+   # Your message production logic goes here
+   # Example:
+   for i in range(1000000):
+       message = f"Message {i}\n"
+       message_queue.put(message)
+
+# replacement for produce messages
+def runLoop(message_queue):
+    def printHand(lmk, joint_string: str, frame):
+        message_queue.put(f"J:{joint_string}")
+        # print(lmk)
+        x = lmk.x
+        y = lmk.y
+        z = lmk.z
+        v = lmk.visibility
+        shape = frame.shape
+        message_queue.put(f"X:{x}")
+        message_queue.put(f"Y:{y}")
+        message_queue.put(f"Z:{z}")
+        relative_x = int(x * shape[1])
+        relative_y = int(y * shape[0])
+        relative_z = int(z * shape[2])
+        message_queue.put(f"XR:{relative_x}")
+        message_queue.put(f"YR:{relative_y}")
+        message_queue.put(f"ZR:{relative_z}")
+        cv2.putText(img=frame, text=joint_string, org=(relative_x, relative_y), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 0, 0), thickness=1, lineType=cv2.LINE_AA)
+
+        message_queue.put("S:D")
+    while True:
+        if cap.isOpened():
+            retval, frame = cap.read()
+            if not retval:
+                 break
+
+            # Convert the frame to RGB
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Detect the signs in the frame
+            results = holistic.process(frame_rgb)
+
+            #signs = []
+            #if results.pose_landmarks:
+            #    sign = results.pose_landmarks.landmark[mp_holistic.PoseLandmark.LEFT_ELBOW].visibility
+            #    signs.append(sign)
+
+            for connection in mp_holistic.HAND_CONNECTIONS:
+                # print(connection)
+                message_queue.put(f"F:{connection[0]}")
+                message_queue.put(f"T:{connection[1]}")
+            if results.left_hand_landmarks:
+                mp_drawing.draw_landmarks(frame, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
+                for landmark in hand:
+                    lmk = results.left_hand_landmarks.landmark[landmark[0]]
+                    printHand(lmk, "l_"+landmark[2], frame)
+            if results.right_hand_landmarks:
+                mp_drawing.draw_landmarks(frame, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
+                for landmark in hand:
+                    lmk = results.right_hand_landmarks.landmark[landmark[0]]
+                    printHand(lmk, "r_"+landmark[2], frame)
+            if results.pose_landmarks:
+                mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS)
+                for landmark in range(len(results.pose_landmarks.landmark)):
+                    lmk = results.pose_landmarks.landmark[landmark]
+                    printHand(lmk, str(landmark), frame)
+
+            # Display the frame
+            cv2.imshow("Sign Language Detection", frame)
+            # Break the loop if 'q' is pressed
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+#end runLoop
+
+def startSending():
+   message_queue = Queue()
+
+   # Start the message producer thread
+   producer_thread = threads.deferToThread(runLoop, message_queue)
+
+   # Start the message sender thread
+   sender_factory = MessageSenderFactory(message_queue)
+   reactor.connectTCP('127.0.0.1', 3000, sender_factory)
+
+   # Start the reactor event loop
+   reactor.run()
+startSending()
+# Release the video capture and close all windows
+cap.release()
+cv2.destroyAllWindows()
+
+# # Convert the detected signs to English textual paragraphs
+# textual_paragraphs = []
+# current_paragraph = ""
+# for sign in signs:
+#    if sign > 0.5:
+#        current_paragraph += " "
+#    else:
+#        current_paragraph += "."
+#        textual_paragraphs.append(current_paragraph)
+#        current_paragraph = ""
+#
+# # Print the English textual paragraphs
+# for paragraph in textual_paragraphs:
+#    print(paragraph)
