@@ -43,6 +43,7 @@ backup/dustbin.py
 Good luck with that, I couldn't get video/recognition working
 
 =============
+```
 Notes on protocol (possibly out of date).
 
 I am proposing a new mocap format that doesn’t need a hierarchy, and can do streaming, graph or grid data.
@@ -77,7 +78,7 @@ U: up data
 D: down data
 R: right data
 L: left data
-
+```
 
 Plus ways to remove data by adding a - in front or behind the label and a leading or a trailing + to add data (to a tuple)
 This needs to be generalized. Think how to do hypergraphs. More verbose would be an option,
