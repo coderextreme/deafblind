@@ -59,6 +59,7 @@ E: in data  (ending)...etc. 
 
 The animation is done like:
 J:Joint id or name
+L:landmark, left(l), right (r) or pose(p)
 C:Joint class or type (may change)
 A:Joint alias or DEF (optional)
 X:X location, unit (unit may be defaulted, no unit for scaling)
@@ -77,7 +78,7 @@ J: Joint, as above
 U: up data
 D: down data
 R: right data
-L: left data
+L?: left data
 ```
 
 Plus ways to remove data by adding a - in front or behind the label and a leading or a trailing + to add data (to a tuple)
