@@ -9,6 +9,7 @@ from twisted.internet.protocol import Protocol, ClientFactory
 from queue import Queue
 from twisted.internet.task import LoopingCall
 from twisted.python import log
+import time
 
 
 
@@ -50,6 +51,7 @@ mp_drawing = mp.solutions.drawing_utils
 video_path = 0
 cap = cv2.VideoCapture(video_path)
 
+
 from twisted.internet import reactor, protocol
 
 #class myServer(protocol.Protocol):
@@ -61,6 +63,7 @@ from twisted.internet import reactor, protocol
 #        return myServer()
 
 class myClientFactory(protocol.ClientFactory):
+
     def buildProtocol(self, addr):
         return myClient()
 
@@ -74,6 +77,38 @@ class myClientFactory(protocol.ClientFactory):
 
 # sendMessages()
 class myClient(protocol.Protocol):
+    def __init__(self):
+        self.sequenceno = -1
+        self.header = ""
+
+        recipients = "*"
+        self.header += "{"
+        self.header += "{"
+        self.header += recipients
+        self.header += "}"
+        self.header += "}"
+
+        sender = "Mocap"
+        self.header += "{"
+        self.header += sender
+        self.header += "}"
+
+        self.footer = ""
+        error = ""
+        self.footer += "{"
+        self.footer += error
+        self.footer += "}"
+
+        language = "en"
+        self.footer += "{"
+        self.footer += language
+        self.footer += "}"
+
+        nick = "MocapUser"
+        self.footer += "{"
+        self.footer += nick
+        self.footer += "}"
+
     def startedEvent(self):
         print('started event')
 
@@ -96,28 +131,34 @@ class myClient(protocol.Protocol):
 
                 for connection in mp_holistic.HAND_CONNECTIONS:
                     # print(connection)
-                    self.bufferMessage(f"F:{connection[0]}")
-                    self.bufferMessage(f"T:{connection[1]}")
+                    self.bufferMessage(f"F:l{connection[0]}")
+                    self.bufferMessage(f"T:l{connection[1]}")
+                    self.bufferMessage(f"F:r{connection[0]}")
+                    self.bufferMessage(f"T:r{connection[1]}")
+                for connection in mp_holistic.POSE_CONNECTIONS:
+                    # print(connection)
+                    self.bufferMessage(f"F:p{connection[0]}")
+                    self.bufferMessage(f"T:p{connection[1]}")
                 if results.left_hand_landmarks:
                     mp_drawing.draw_landmarks(frame, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
                     for landmark in hand:
                         lmk = results.left_hand_landmarks.landmark[landmark[0]]
-                        self.printHand(lmk, "l_"+landmark[2], frame)
+                        self.printHand(lmk, landmark[0], "l_"+landmark[2], frame)
                 if results.right_hand_landmarks:
                     mp_drawing.draw_landmarks(frame, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
                     for landmark in hand:
                         lmk = results.right_hand_landmarks.landmark[landmark[0]]
-                        self.printHand(lmk, "r_"+landmark[2], frame)
+                        self.printHand(lmk, landmark[0], "r_"+landmark[2], frame)
                 if results.pose_landmarks:
                     mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS)
                     for landmark in range(len(results.pose_landmarks.landmark)):
                         lmk = results.pose_landmarks.landmark[landmark]
-                        self.printHand(lmk, str(landmark), frame)
+                        self.printHand(lmk, landmark, "p_"+str(landmark), frame)
 
                 # Display the frame
-                cv2.imshow("Sign Language Detection", frame)
-                # Break the loop if 'q' is pressed
-                if cv2.waitKey(1) & 0xFF == ord('q'):
+                # cv2.imshow("Sign Language Detection", frame)
+                # Break the loop if ESC is pressed
+                if cv2.waitKey(30) == 27:
                     self.bufferSend()
                     print("Stopping")
                     reactor.stop()
@@ -135,11 +176,27 @@ class myClient(protocol.Protocol):
 
 
     def sendMessage(self, message):
-        self.transport.write(message.encode())
+        entiremessage = ""
+
+        entiremessage += self.header
+
+        timestamp = time.time()
+        entiremessage += "{"
+        entiremessage += str(int(timestamp))
+        entiremessage += "}"
+
+        self.sequenceno += 1
+        entiremessage += "{"
+        entiremessage += str(self.sequenceno)
+        entiremessage += "}"
+
+        entiremessage += self.footer
+        entiremessage += message
+        self.transport.write(entiremessage.encode())
         # self.transport.write(message)
 
     def bufferSend(self):
-        message = "\n".join(self.buffer)+"\n"
+        message = " ".join(self.buffer)+"\n"
         # print(message)
         self.sendMessage(message)
         self.buffer = []
@@ -147,9 +204,10 @@ class myClient(protocol.Protocol):
     def bufferMessage(self, message):
         self.buffer.append(message);
 
-    def printHand(self, lmk, joint_string: str, frame):
+    def printHand(self, lmk, landmark, joint_string: str, frame):
 
         self.bufferMessage(f"J:{joint_string}")
+        self.bufferMessage(f"L:{landmark}")
         # print(lmk)
         x = lmk.x
         y = lmk.y
@@ -175,7 +233,7 @@ class myClient(protocol.Protocol):
 
 from twisted.internet import task
 
-reactor.connectTCP('127.0.0.1', 3000, myClientFactory())
+reactor.connectTCP('127.0.0.1', 8180, myClientFactory())
 # reactor.listenTCP(3002, myServerFactory())
 reactor.run()
 cap.release()
