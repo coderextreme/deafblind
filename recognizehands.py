@@ -39,7 +39,7 @@ hand = [[mp_hands.WRIST, "WRIST", "radiocarpal"],
 
 # Load the MediaPipe Sign Language Detection model
 mp_holistic = mp.solutions.holistic
-holistic = mp_holistic.Holistic()
+holistic = mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
 # Load the MediaPipe Drawing utils for visualization
 mp_drawing = mp.solutions.drawing_utils
@@ -119,10 +119,12 @@ class myClient(protocol.Protocol):
             if not retval:
                 reactor.callLater(0, self.performAnAction)
             else:
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
                 # Detect the signs in the frame
-                results = holistic.process(frame_rgb)
+                results = holistic.process(image)
+
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
                 #signs = []
                 #if results.pose_landmarks:
@@ -139,24 +141,40 @@ class myClient(protocol.Protocol):
                     # print(connection)
                     self.bufferMessage(f"F:p{connection[0]}")
                     self.bufferMessage(f"T:p{connection[1]}")
+                #for connection in mp_holistic.FACEMESH_TESSELATION:
+                #    # print(connection)
+                #    self.bufferMessage(f"F:t{connection[0]}")
+                #    self.bufferMessage(f"T:t{connection[1]}")
+                #for connection in mp_holistic.FACEMESH_CONTOURS:
+                #    # print(connection)
+                #    self.bufferMessage(f"F:c{connection[0]}")
+                #    self.bufferMessage(f"T:c{connection[1]}")
+                mp_drawing.draw_landmarks(image, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
                 if results.left_hand_landmarks:
-                    mp_drawing.draw_landmarks(frame, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
                     for landmark in hand:
                         lmk = results.left_hand_landmarks.landmark[landmark[0]]
-                        self.printHand(lmk, landmark[0], "l_"+landmark[2], frame)
+                        self.printHand(lmk, landmark[0], "l_"+landmark[2], image)
+                mp_drawing.draw_landmarks(image, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
                 if results.right_hand_landmarks:
-                    mp_drawing.draw_landmarks(frame, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
                     for landmark in hand:
                         lmk = results.right_hand_landmarks.landmark[landmark[0]]
-                        self.printHand(lmk, landmark[0], "r_"+landmark[2], frame)
+                        self.printHand(lmk, landmark[0], "r_"+landmark[2], image)
+                mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS)
                 if results.pose_landmarks:
-                    mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS)
                     for landmark in range(len(results.pose_landmarks.landmark)):
                         lmk = results.pose_landmarks.landmark[landmark]
-                        self.printHand(lmk, landmark, "p_"+str(landmark), frame)
+                        self.printHand(lmk, landmark, "p_"+str(landmark), image)
+                
+                #mp_drawing.draw_landmarks(image, results.face_landmarks, mp_holistic.FACEMESH_TESSELATION)
+                #mp_drawing.draw_landmarks(image, results.face_landmarks, mp_holistic.FACEMESH_CONTOURS)
+                #if results.face_landmarks:
+                #    for landmark in range(len(results.face_landmarks.landmark)):
+                #        lmk = results.face_landmarks.landmark[landmark]
+                #        self.printHand(lmk, landmark, "t_"+str(landmark), image)
+                #        self.printHand(lmk, landmark, "c_"+str(landmark), image)
 
                 # Display the frame
-                # cv2.imshow("Sign Language Detection", frame)
+                # cv2.imshow("Sign Language Detection", image)
                 # Break the loop if ESC is pressed
                 if cv2.waitKey(30) == 27:
                     self.bufferSend()
@@ -204,7 +222,7 @@ class myClient(protocol.Protocol):
     def bufferMessage(self, message):
         self.buffer.append(message);
 
-    def printHand(self, lmk, landmark, joint_string: str, frame):
+    def printHand(self, lmk, landmark, joint_string: str, image):
 
         self.bufferMessage(f"J:{joint_string}")
         self.bufferMessage(f"L:{landmark}")
@@ -213,17 +231,17 @@ class myClient(protocol.Protocol):
         y = lmk.y
         z = lmk.z
         v = lmk.visibility
-        shape = frame.shape
+        shape = image.shape
         self.bufferMessage(f"X:{x}")
         self.bufferMessage(f"Y:{y}")
         self.bufferMessage(f"Z:{z}")
-        relative_x = int(x * shape[1])
-        relative_y = int(y * shape[0])
-        relative_z = int(z * shape[2])
-        self.bufferMessage(f"XR:{relative_x}")
-        self.bufferMessage(f"YR:{relative_y}")
-        self.bufferMessage(f"ZR:{relative_z}")
-        cv2.putText(img=frame, text=joint_string, org=(relative_x, relative_y), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 0, 0), thickness=1, lineType=cv2.LINE_AA)
+        #relative_x = int(x * shape[1])
+        #relative_y = int(y * shape[0])
+        #relative_z = int(z * shape[2])
+        #self.bufferMessage(f"XR:{relative_x}")
+        #self.bufferMessage(f"YR:{relative_y}")
+        #self.bufferMessage(f"ZR:{relative_z}")
+        # cv2.putText(img=image, text=joint_string, org=(relative_x, relative_y), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 0, 0), thickness=1, lineType=cv2.LINE_AA)
 
     def runRecognizer(self):
         certainAmount = 5.0  # this is in seconds
