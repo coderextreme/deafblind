@@ -22,7 +22,7 @@ Watch video and skeleton from webcam/MediaPipe/OpenCV and server stream!
 
 John
 
-Notes.  I don't know about distribution of these, so I'm not checking them in.  I probably had the wrong version of mediapipe (see links for correct vesion).
+Notes.  I don't know about distribution of these, so I'm not checking them in.  I probably had the wrong version of mediapipe (see links for correct version).
 
 ===
 
