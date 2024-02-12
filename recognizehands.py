@@ -73,7 +73,7 @@ class myClientFactory(protocol.ClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         print("Connection lost.")
-        #reactor.stop()
+        # reactor.stop()
 
 # sendMessages()
 class myClient(protocol.Protocol):
@@ -174,7 +174,7 @@ class myClient(protocol.Protocol):
                 #        self.printHand(lmk, landmark, "c_"+str(landmark), image)
 
                 # Display the frame
-                # cv2.imshow("Sign Language Detection", image)
+                cv2.imshow("Sign Language Detection", image)
                 # Break the loop if ESC is pressed
                 if cv2.waitKey(30) == 27:
                     self.bufferSend()
@@ -227,14 +227,16 @@ class myClient(protocol.Protocol):
         self.bufferMessage(f"J:{joint_string}")
         self.bufferMessage(f"L:{landmark}")
         # print(lmk)
-        x = lmk.x
-        y = lmk.y
-        z = lmk.z
+        
+        x = round(lmk.x, 5)
+        y = round(lmk.y, 5)
+        z = round(lmk.z, 5)
         v = lmk.visibility
         shape = image.shape
         self.bufferMessage(f"X:{x}")
         self.bufferMessage(f"Y:{y}")
         self.bufferMessage(f"Z:{z}")
+        # print(v)
         #relative_x = int(x * shape[1])
         #relative_y = int(y * shape[0])
         #relative_z = int(z * shape[2])
