@@ -78,7 +78,13 @@ class myClientFactory(protocol.ClientFactory):
 # sendMessages()
 class myClient(protocol.Protocol):
     def __init__(self):
+        self.Impact = "Impact"
+        self.Mocap = "Mocap"
+        self.Cppon = "Cppon"
+        self.sender = self.Impact   # one of self.Mocap, self.Cppon, self.Impact
+
         self.sequenceno = -1
+        self.connection_counter = 0
         self.header = ""
 
         recipients = "*"
@@ -88,7 +94,6 @@ class myClient(protocol.Protocol):
         self.header += "}"
         self.header += "}"
 
-        self.sender = "Mocap"
         self.header += "{"
         self.header += self.sender
         self.header += "}"
@@ -104,7 +109,7 @@ class myClient(protocol.Protocol):
         self.footer += language
         self.footer += "}"
 
-        nick = "MocapUser"
+        nick = self.sender+"User"   # one of MocapUser, CpponUser, ImpactUser
         self.footer += "{"
         self.footer += nick
         self.footer += "}"
@@ -131,47 +136,12 @@ class myClient(protocol.Protocol):
                 #    sign = results.pose_landmarks.landmark[mp_holistic.PoseLandmark.LEFT_ELBOW].visibility
                 #    signs.append(sign)
 
-                for connection in mp_holistic.HAND_CONNECTIONS:
-                    # print(connection)
-                    self.bufferMessage(f"F:l{connection[0]}")
-                    self.bufferMessage(f"T:l{connection[1]}")
-                    self.bufferMessage(f"F:r{connection[0]}")
-                    self.bufferMessage(f"T:r{connection[1]}")
-                for connection in mp_holistic.POSE_CONNECTIONS:
-                    # print(connection)
-                    self.bufferMessage(f"F:p{connection[0]}")
-                    self.bufferMessage(f"T:p{connection[1]}")
-                #for connection in mp_holistic.FACEMESH_TESSELATION:
-                #    # print(connection)
-                #    self.bufferMessage(f"F:t{connection[0]}")
-                #    self.bufferMessage(f"T:t{connection[1]}")
-                #for connection in mp_holistic.FACEMESH_CONTOURS:
-                #    # print(connection)
-                #    self.bufferMessage(f"F:c{connection[0]}")
-                #    self.bufferMessage(f"T:c{connection[1]}")
-                mp_drawing.draw_landmarks(image, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
-                if results.left_hand_landmarks:
-                    for landmark in hand:
-                        lmk = results.left_hand_landmarks.landmark[landmark[0]]
-                        self.printHand(lmk, landmark[0], "l_"+landmark[2], image)
-                mp_drawing.draw_landmarks(image, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
-                if results.right_hand_landmarks:
-                    for landmark in hand:
-                        lmk = results.right_hand_landmarks.landmark[landmark[0]]
-                        self.printHand(lmk, landmark[0], "r_"+landmark[2], image)
-                mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS)
-                if results.pose_landmarks:
-                    for landmark in range(len(results.pose_landmarks.landmark)):
-                        lmk = results.pose_landmarks.landmark[landmark]
-                        self.printHand(lmk, landmark, "p_"+str(landmark), image)
-                
-                #mp_drawing.draw_landmarks(image, results.face_landmarks, mp_holistic.FACEMESH_TESSELATION)
-                #mp_drawing.draw_landmarks(image, results.face_landmarks, mp_holistic.FACEMESH_CONTOURS)
-                #if results.face_landmarks:
-                #    for landmark in range(len(results.face_landmarks.landmark)):
-                #        lmk = results.face_landmarks.landmark[landmark]
-                #        self.printHand(lmk, landmark, "t_"+str(landmark), image)
-                #        self.printHand(lmk, landmark, "c_"+str(landmark), image)
+                # Comment out these lines as desired.  Please don't delete them
+                self.sendAll(image, results.left_hand_landmarks, "l", mp_holistic.HAND_CONNECTIONS)
+                self.sendAll(image, results.right_hand_landmarks, "r", mp_holistic.HAND_CONNECTIONS)
+                self.sendAll(image, results.pose_landmarks, "p", mp_holistic.POSE_CONNECTIONS)
+                #self.sendAll(image, results.face_landmarks, "t", mp_holistic.FACEMESH_TESSELATION)
+                #self.sendAll(image, results.face_landmarks, "c", mp_holistic.FACEMESH_CONTOURS)
 
                 # Display the frame
                 cv2.imshow("Sign Language Detection", image)
@@ -184,8 +154,65 @@ class myClient(protocol.Protocol):
             print("Video died")
         self.bufferSend()
         reactor.callLater(0, self.performAnAction)
-        # tail "recursion"
-        # reactor.callLater(0, self.performAnAction)
+
+    def sendAll(self, image, landmarks, suffix, connections):
+        # send lines to refresh the screen
+        self.sendLines(connections, suffix)   # left hand
+        # construct each time, because they disappear
+        # self.constructPoints(landmarks, "_"+suffix)
+        # send coordinates
+        self.sendPoints(image, landmarks, "_"+suffix, connections)
+
+    def constructPoints(self, landmarks, suffix):
+        if landmarks:
+            if suffix in ("_p", "_t", "_c"):
+                for landmark in range(len(landmarks.landmark)):
+                    lmk = landmarks.landmark[landmark]
+                    self.constructPoint(landmark, suffix, str(landmark))
+            else:
+                for landmark in hand:
+                    lmk = landmarks.landmark[landmark[0]]
+                    self.constructPoint(landmark[0], suffix, landmark[2])
+
+    def sendPoints(self, image, landmarks, suffix, connections):
+        mp_drawing.draw_landmarks(image, landmarks, connections)
+        if landmarks:
+            if suffix in ("_p", "_t", "_c"):
+                for landmark in range(len(landmarks.landmark)):
+                    lmk = landmarks.landmark[landmark]
+                    self.constructPoint(landmark, suffix, str(landmark))
+                    self.sendPoint(lmk, landmark, suffix, str(landmark), image)
+            else:
+                for landmark in hand:
+                    lmk = landmarks.landmark[landmark[0]]
+                    self.constructPoint(landmark[0], suffix, landmark[2])
+                    self.sendPoint(lmk, landmark[0], suffix, landmark[2], image)
+
+    def sendMPLines(self, fr, to):
+        # print(fr, to)
+        if self.sender == self.Cppon:
+            variable = f"Line{self.connection_counter}"
+            self.bufferMessage(f"Line {variable} = Line();")
+            self.bufferMessage(f'{variable}.setFrom(CString("{fr}"));')
+            self.bufferMessage(f'{variable}.setTo(CString("{to}"));')
+            self.connection_counter = self.connection_counter + 1
+        elif self.sender == self.Mocap:
+            self.bufferMessage(f'F:{fr}')
+            self.bufferMessage(f'T:{to}')
+            self.connection_counter = self.connection_counter + 1
+        elif self.sender == self.Impact:
+            variable = f"{self.connection_counter}"
+            # self.bufferMessage(f'SEGMENT|{variable}|DELETE|{fr}|{to}')
+            self.bufferMessage(f'SEGMENT|{variable}|INSERT|{fr}|{to}')
+            self.bufferMessage(f'SEGMENT|{variable}|UPDATE|{fr}|{to}')
+            self.connection_counter = self.connection_counter + 1
+
+        if self.connection_counter < 0:  # wrap around, I hope
+            self.connection_counter = 0
+
+    def sendLines(self, connections, prefix):
+        for connection in connections:
+            self.sendMPLines(f"{prefix}{connection[0]}", f"{prefix}{connection[1]}")
 
     def connectionMade(self):
         self.sendMessage("Marker: Start")  # Send marker for the first frame
@@ -220,12 +247,47 @@ class myClient(protocol.Protocol):
         self.buffer = []
 
     def bufferMessage(self, message):
+        # print(f"{message}\n");
         self.buffer.append(message);
 
-    def printHand(self, lmk, landmark, joint_string: str, image):
+    def constructMPPoint(self, landmark, suffix, defn):
+        if self.sender == self.Cppon:
+            ptid = f"{landmark}{suffix}"
+            self.bufferMessage(f"Point Point{ptid} = Point();")
+            self.bufferMessage(f'Point{ptid}.setDEF(CString("{defn}");')
+        elif self.sender == self.Mocap:
+            self.bufferMessage(f"J:{defn}")
+            self.bufferMessage(f"L:{landmark}")
+        elif self.sender == self.Impact:
+            prefix = suffix[1:]
+            ptid = f"{prefix}{landmark}"
+            self.bufferMessage(f'NODE|{ptid}|INSERT')
 
-        self.bufferMessage(f"J:{joint_string}")
-        self.bufferMessage(f"L:{landmark}")
+
+    def constructPoint(self, landmark, suffix, joint_string: str):
+        prefix = suffix[1:]
+        self.constructMPPoint(landmark, suffix, f"{prefix}_{joint_string}")
+
+    def sendMPPoint(self, landmark, suffix, x, y, z):
+        if self.sender == self.Cppon:
+            xyz = "{"+f"{x}, {y}, {z}"+"}"
+            ptid = f"{landmark}{suffix}"
+            self.bufferMessage(f"Point{ptid}.setPoint(new float[]{xyz});")
+        elif self.sender == self.Mocap:
+            self.bufferMessage(f"X:{x}")
+            self.bufferMessage(f"Y:{y}")
+            self.bufferMessage(f"Z:{z}")
+        elif self.sender == self.Impact:
+            x = x*10-5
+            y = y*10-5
+            y = -y
+            z = z*10
+            prefix = suffix[1:]
+            ptid = f"{prefix}{landmark}"
+            self.bufferMessage(f'NODE|{ptid}|UPDATE|1|1|1|1|{x}|{y}|{z}|0.0|0.0|0.0')
+
+    def sendPoint(self, lmk, landmark, suffix, joint_string: str, image):
+
         # print(lmk)
         
         x = round(lmk.x, 5)
@@ -233,21 +295,22 @@ class myClient(protocol.Protocol):
         z = round(lmk.z, 5)
         v = lmk.visibility
         shape = image.shape
-        self.bufferMessage(f"X:{x}")
-        self.bufferMessage(f"Y:{y}")
-        self.bufferMessage(f"Z:{z}")
+
+        self.sendMPPoint(landmark, suffix, x, y, z)
         # print(v)
-        #relative_x = int(x * shape[1])
-        #relative_y = int(y * shape[0])
+        relative_x = int(x * shape[1])
+        relative_y = int(y * shape[0])
         #relative_z = int(z * shape[2])
         #self.bufferMessage(f"XR:{relative_x}")
         #self.bufferMessage(f"YR:{relative_y}")
         #self.bufferMessage(f"ZR:{relative_z}")
-        # cv2.putText(img=image, text=joint_string, org=(relative_x, relative_y), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 0, 0), thickness=1, lineType=cv2.LINE_AA)
+        prefix = suffix[1:]+"_"
+        cv2.putText(img=image, text=prefix+joint_string, org=(relative_x, relative_y), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 0, 0), thickness=1, lineType=cv2.LINE_AA)
 
     def runRecognizer(self):
         certainAmount = 5.0  # this is in seconds
-        self.bufferMessage("S:D")
+        if self.sender == self.Cppon:
+            self.bufferMessage("X3D X3D0 = X3D();")
         reactor.callLater(0, self.performAnAction)
         # self.transport.loseConnection()
 
