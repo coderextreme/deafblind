@@ -842,7 +842,7 @@ class myClient(protocol.Protocol):
             z = z*10
             prefix = suffix[1:]
             ptid = f"{prefix}{landmark}"
-            self.bufferMessage(f'NODE|{ptid}|UPDATE|1|1|1|1|{x}|{y}|{z}|0.0|0.0|0.0')
+            self.bufferMessage(f'NODE|{ptid}|UPDATE|1|1|0|1|{x}|{y}|{z}|0.0|0.0|0.0')
 
     def sendPoint(self, lmk, landmark, suffix, joint_string: str, image):
 
@@ -867,7 +867,7 @@ class myClient(protocol.Protocol):
             prefix = ""
         elif prefix == "p_" and joint_string.startswith("r_"):
             prefix = ""
-        cv2.putText(img=image, text=prefix+joint_string, org=(relative_x, relative_y), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 255, 0), thickness=1, lineType=cv2.LINE_AA)
+        #cv2.putText(img=image, text=prefix+joint_string, org=(relative_x, relative_y), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 255, 0), thickness=1, lineType=cv2.LINE_AA)
 
     def runRecognizer(self):
         certainAmount = 5.0  # this is in seconds
