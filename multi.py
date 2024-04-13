@@ -752,9 +752,7 @@ class myClient(protocol.Protocol):
     def sendLines(self, connections, prefix):
         for connection in connections:
             # make sure not to draw these lines
-            if prefix == "p" and connection[0] == poselm.LEFT_HIP and connection[1] == poselm.RIGHT_HIP:
-                pass
-            elif prefix == "p" and connection[0] == poselm.LEFT_SHOULDER and connection[1] == poselm.LEFT_HIP:
+            if prefix == "p" and connection[0] == poselm.LEFT_SHOULDER and connection[1] == poselm.LEFT_HIP:
                 pass
             elif prefix == "p" and connection[0] == poselm.LEFT_SHOULDER and connection[1] == poselm.RIGHT_SHOULDER:
                 pass
@@ -764,8 +762,6 @@ class myClient(protocol.Protocol):
                 self.sendMPLine(f"{prefix}{connection[0]}", f"{prefix}{connection[1]}")
         # draw these lines instead
         if prefix in ("p"):
-            self.sendMPLine(f"p33", f"p23") # patch the sacroiliac to the left hip
-            self.sendMPLine(f"p33", f"p24") # patch the sacroiliac to the right hip
             self.sendMPLine(f"p34", f"p11") # patch the vc7 to the left shoulder
             self.sendMPLine(f"p34", f"p12") # patch the vc7 to the right shoulder
             self.sendMPLine(f"p33", f"p34") # patch the sacroiliac to vc7
