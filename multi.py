@@ -10,10 +10,12 @@ from queue import Queue
 from twisted.internet.task import LoopingCall
 from twisted.python import log
 import time
+from collections import namedtuple
 
 
 
 mp_hands = mp.solutions.hands.HandLandmark
+poselm = mp.solutions.pose.PoseLandmark
 
 hand = [[mp_hands.WRIST, "WRIST", "radiocarpal"],
 [mp_hands.THUMB_CMC, "THUMB_CMC", "carpometacarpal_1"],
@@ -36,6 +38,42 @@ hand = [[mp_hands.WRIST, "WRIST", "radiocarpal"],
 [mp_hands.PINKY_PIP, "PINKY_PIP", "carpal_proximal_interphalangeal_5"],
 [mp_hands.PINKY_DIP, "PINKY_DIP", "carpal_distal_interphalangeal_5"],
 [mp_hands.PINKY_TIP, "PINKY_TIP", "carpal_distal_phalanx_5"]]
+
+pose = [
+[poselm.NOSE, 0, "NOSE"],
+[poselm.LEFT_EYE_INNER, 1, "LEFT_EYE_INNER"],
+[poselm.LEFT_EYE, 2, "LEFT_EYE"],
+[poselm.LEFT_EYE_OUTER, 3, "LEFT_EYE_OUTER"],
+[poselm.RIGHT_EYE_INNER, 4, "RIGHT_EYE_INNER"],
+[poselm.RIGHT_EYE, 5, "RIGHT_EYE"],
+[poselm.RIGHT_EYE_OUTER, 6, "RIGHT_EYE_OUTER"],
+[poselm.LEFT_EAR, 7, "LEFT_EAR"],
+[poselm.RIGHT_EAR, 8, "RIGHT_EAR"],
+[poselm.MOUTH_LEFT, 9, "MOUTH_LEFT"],
+[poselm.MOUTH_RIGHT, 10, "MOUTH_RIGHT"],
+[poselm.LEFT_SHOULDER, 11, "LEFT_SHOULDER"],
+[poselm.RIGHT_SHOULDER, 12, "RIGHT_SHOULDER"],
+[poselm.LEFT_ELBOW, 13, "LEFT_ELBOW"],
+[poselm.RIGHT_ELBOW, 14, "RIGHT_ELBOW"],
+[poselm.LEFT_WRIST, 15, "LEFT_WRIST"],
+[poselm.RIGHT_WRIST, 16, "RIGHT_WRIST"],
+[poselm.LEFT_PINKY, 17, "LEFT_PINKY"],
+[poselm.RIGHT_PINKY, 18, "RIGHT_PINKY"],
+[poselm.LEFT_INDEX, 19, "LEFT_INDEX"],
+[poselm.RIGHT_INDEX, 20, "RIGHT_INDEX"],
+[poselm.LEFT_THUMB, 21, "LEFT_THUMB"],
+[poselm.RIGHT_THUMB, 22, "RIGHT_THUMB"],
+[poselm.LEFT_HIP, 23, "LEFT_HIP"],
+[poselm.RIGHT_HIP, 24, "RIGHT_HIP"],
+[poselm.LEFT_KNEE, 25, "LEFT_KNEE"],
+[poselm.RIGHT_KNEE, 26, "RIGHT_KNEE"],
+[poselm.LEFT_ANKLE, 27, "LEFT_ANKLE"],
+[poselm.RIGHT_ANKLE, 28, "RIGHT_ANKLE"],
+[poselm.LEFT_HEEL, 29, "LEFT_HEEL"],
+[poselm.RIGHT_HEEL, 30, "RIGHT_HEEL"],
+[poselm.LEFT_FOOT_INDEX, 31, "LEFT_FOOT_INDEX"],
+[poselm.RIGHT_FOOT_INDEX, 32, "RIGHT_FOOT_INDEX"]
+]
 
 # Load the MediaPipe Sign Language Detection model
 mp_holistic = mp.solutions.holistic
@@ -75,13 +113,14 @@ class myClientFactory(protocol.ClientFactory):
         print("Connection lost.")
         # reactor.stop()
 
+MyLandmark = namedtuple('MyLandmark', 'x y z visibility')
 # sendMessages()
 class myClient(protocol.Protocol):
     def __init__(self):
         self.Impact = "Impact"
         self.Mocap = "Mocap"
         self.Cppon = "Cppon"
-        self.sender = self.Impact   # one of self.Mocap, self.Cppon, self.Impact
+        self.sender = self.Mocap   # one of self.Mocap, self.Cppon, self.Impact.  Mocap is most performant
 
         self.sequenceno = -1
         self.connection_counter = 0
@@ -137,9 +176,9 @@ class myClient(protocol.Protocol):
                 #    signs.append(sign)
 
                 # Comment out these lines as desired.  Please don't delete them
-                self.sendAll(image, results.left_hand_landmarks, "l", mp_holistic.HAND_CONNECTIONS)
-                self.sendAll(image, results.right_hand_landmarks, "r", mp_holistic.HAND_CONNECTIONS)
-                self.sendAll(image, results.pose_landmarks, "p", mp_holistic.POSE_CONNECTIONS)
+                #self.sendAll(image, results.left_hand_landmarks, "l", mp_holistic.HAND_CONNECTIONS, hand)
+                #self.sendAll(image, results.right_hand_landmarks, "r", mp_holistic.HAND_CONNECTIONS, hand)
+                self.sendAll(image, results.pose_landmarks, "p", mp_holistic.POSE_CONNECTIONS, pose)
                 #self.sendAll(image, results.face_landmarks, "t", mp_holistic.FACEMESH_TESSELATION)
                 #self.sendAll(image, results.face_landmarks, "c", mp_holistic.FACEMESH_CONTOURS)
 
@@ -155,41 +194,62 @@ class myClient(protocol.Protocol):
         self.bufferSend()
         reactor.callLater(0, self.performAnAction)
 
-    def sendAll(self, image, landmarks, suffix, connections):
+    def sendAll(self, image, landmarks, suffix, connections, lmlist):
         # send lines to refresh the screen
         self.sendLines(connections, suffix)   # left hand
         # construct each time, because they disappear
-        # self.constructPoints(landmarks, "_"+suffix)
+        # self.constructPoints(landmarks, "_"+suffix, lmlist)
         # send coordinates
-        self.sendPoints(image, landmarks, "_"+suffix, connections)
+        self.sendPoints(image, landmarks, "_"+suffix, connections, lmlist)
 
-    def constructPoints(self, landmarks, suffix):
+    def constructPoints(self, landmarks, suffix, lmlist):
         if landmarks:
-            if suffix in ("_p", "_t", "_c"):
+            if suffix in ("_t", "_c"):
                 for landmark in range(len(landmarks.landmark)):
-                    lmk = landmarks.landmark[landmark]
                     self.constructPoint(landmark, suffix, str(landmark))
-            else:
-                for landmark in hand:
-                    lmk = landmarks.landmark[landmark[0]]
+            elif suffix in ("_p", "_l", "_r"):
+                for landmark in lmlist:
                     self.constructPoint(landmark[0], suffix, landmark[2])
+            if suffix in ("_p"):
+                self.constructPoint(len(lmlist), suffix, "sacroiliac")
+                self.constructPoint(len(lmlist)+1, suffix, "vc7")
 
-    def sendPoints(self, image, landmarks, suffix, connections):
+    def sendPoints(self, image, landmarks, suffix, connections, lmlist):
         mp_drawing.draw_landmarks(image, landmarks, connections)
         if landmarks:
-            if suffix in ("_p", "_t", "_c"):
+            if suffix in ("_t", "_c"):
                 for landmark in range(len(landmarks.landmark)):
                     lmk = landmarks.landmark[landmark]
                     self.constructPoint(landmark, suffix, str(landmark))
                     self.sendPoint(lmk, landmark, suffix, str(landmark), image)
-            else:
-                for landmark in hand:
+            elif suffix in ("_p", "_l", "_r"):
+                for landmark in lmlist:
                     lmk = landmarks.landmark[landmark[0]]
                     self.constructPoint(landmark[0], suffix, landmark[2])
                     self.sendPoint(lmk, landmark[0], suffix, landmark[2], image)
+            if suffix in ("_p"):
 
-    def sendMPLines(self, fr, to):
-        # print(fr, to)
+                self.constructPoint(len(lmlist), suffix, "sacroiliac")
+                lhlmk = landmarks.landmark[poselm.LEFT_HIP] 
+                rhlmk = landmarks.landmark[poselm.RIGHT_HIP] 
+                lmk = MyLandmark(
+                       x= (lhlmk.x + rhlmk.x)/2,
+                       y= (lhlmk.y + rhlmk.y)/2,
+                       z= (lhlmk.z + rhlmk.z)/2,
+                       visibility=(lhlmk.visibility + rhlmk.visibility)/2  )
+                self.sendPoint(lmk, len(lmlist), suffix, "sacroiliac", image)
+
+                self.constructPoint(len(lmlist)+1, suffix, "vc7")
+                lslmk = landmarks.landmark[poselm.LEFT_SHOULDER] 
+                rslmk = landmarks.landmark[poselm.RIGHT_SHOULDER] 
+                lmk = MyLandmark(
+                       x= (lslmk.x + rslmk.x)/2,
+                       y= (lslmk.y + rslmk.y)/2,
+                       z= (lslmk.z + rslmk.z)/2,
+                       visibility=(lslmk.visibility + rslmk.visibility)/2  )
+                self.sendPoint(lmk, len(lmlist)+1, suffix, "vc7", image)
+
+    def sendMPLine(self, fr, to):
         if self.sender == self.Cppon:
             variable = f"Line{self.connection_counter}"
             self.bufferMessage(f"Line {variable} = Line();")
@@ -212,7 +272,22 @@ class myClient(protocol.Protocol):
 
     def sendLines(self, connections, prefix):
         for connection in connections:
-            self.sendMPLines(f"{prefix}{connection[0]}", f"{prefix}{connection[1]}")
+            if connection[0] == 23 and connection[1] == 24:
+                pass
+            elif connection[0] == 11 and connection[1] == 23:
+                pass
+            elif connection[0] == 11 and connection[1] == 12:
+                pass
+            elif connection[0] == 12 and connection[1] == 24:
+                pass
+            else:
+                self.sendMPLine(f"{prefix}{connection[0]}", f"{prefix}{connection[1]}")
+        if prefix in ("p"):
+            self.sendMPLine(f"p33", f"p23")
+            self.sendMPLine(f"p33", f"p24")
+            self.sendMPLine(f"p34", f"p11")
+            self.sendMPLine(f"p34", f"p12")
+            self.sendMPLine(f"p33", f"p34")
 
     def connectionMade(self):
         self.sendMessage("Marker: Start")  # Send marker for the first frame
