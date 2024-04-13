@@ -40,39 +40,39 @@ hand = [[mp_hands.WRIST, "WRIST", "radiocarpal"],
 [mp_hands.PINKY_TIP, "PINKY_TIP", "carpal_distal_phalanx_5"]]
 
 pose = [
-[poselm.NOSE, 0, "NOSE"],
-[poselm.LEFT_EYE_INNER, 1, "LEFT_EYE_INNER"],
-[poselm.LEFT_EYE, 2, "LEFT_EYE"],
-[poselm.LEFT_EYE_OUTER, 3, "LEFT_EYE_OUTER"],
-[poselm.RIGHT_EYE_INNER, 4, "RIGHT_EYE_INNER"],
-[poselm.RIGHT_EYE, 5, "RIGHT_EYE"],
-[poselm.RIGHT_EYE_OUTER, 6, "RIGHT_EYE_OUTER"],
-[poselm.LEFT_EAR, 7, "LEFT_EAR"],
-[poselm.RIGHT_EAR, 8, "RIGHT_EAR"],
-[poselm.MOUTH_LEFT, 9, "MOUTH_LEFT"],
-[poselm.MOUTH_RIGHT, 10, "MOUTH_RIGHT"],
-[poselm.LEFT_SHOULDER, 11, "LEFT_SHOULDER"],
-[poselm.RIGHT_SHOULDER, 12, "RIGHT_SHOULDER"],
-[poselm.LEFT_ELBOW, 13, "LEFT_ELBOW"],
-[poselm.RIGHT_ELBOW, 14, "RIGHT_ELBOW"],
-[poselm.LEFT_WRIST, 15, "LEFT_WRIST"],
-[poselm.RIGHT_WRIST, 16, "RIGHT_WRIST"],
-[poselm.LEFT_PINKY, 17, "LEFT_PINKY"],
-[poselm.RIGHT_PINKY, 18, "RIGHT_PINKY"],
-[poselm.LEFT_INDEX, 19, "LEFT_INDEX"],
-[poselm.RIGHT_INDEX, 20, "RIGHT_INDEX"],
-[poselm.LEFT_THUMB, 21, "LEFT_THUMB"],
-[poselm.RIGHT_THUMB, 22, "RIGHT_THUMB"],
-[poselm.LEFT_HIP, 23, "LEFT_HIP"],
-[poselm.RIGHT_HIP, 24, "RIGHT_HIP"],
-[poselm.LEFT_KNEE, 25, "LEFT_KNEE"],
-[poselm.RIGHT_KNEE, 26, "RIGHT_KNEE"],
-[poselm.LEFT_ANKLE, 27, "LEFT_ANKLE"],
-[poselm.RIGHT_ANKLE, 28, "RIGHT_ANKLE"],
-[poselm.LEFT_HEEL, 29, "LEFT_HEEL"],
-[poselm.RIGHT_HEEL, 30, "RIGHT_HEEL"],
-[poselm.LEFT_FOOT_INDEX, 31, "LEFT_FOOT_INDEX"],
-[poselm.RIGHT_FOOT_INDEX, 32, "RIGHT_FOOT_INDEX"]
+[poselm.NOSE, 0, "nose"],
+[poselm.LEFT_EYE_INNER, 1, "l_eye_inner"],
+[poselm.LEFT_EYE, 2, "l_eye"],
+[poselm.LEFT_EYE_OUTER, 3, "l_eye_outer"],
+[poselm.RIGHT_EYE_INNER, 4, "r_eye_inner"],
+[poselm.RIGHT_EYE, 5, "r_eye"],
+[poselm.RIGHT_EYE_OUTER, 6, "r_eye_outer"],
+[poselm.LEFT_EAR, 7, "l_ear"],
+[poselm.RIGHT_EAR, 8, "r_ear"],
+[poselm.MOUTH_LEFT, 9, "l_mouth"],
+[poselm.MOUTH_RIGHT, 10, "r_mouth"],
+[poselm.LEFT_SHOULDER, 11, "l_shoulder"],
+[poselm.RIGHT_SHOULDER, 12, "r_shoulder"],
+[poselm.LEFT_ELBOW, 13, "l_elbow"],
+[poselm.RIGHT_ELBOW, 14, "r_elbow"],
+[poselm.LEFT_WRIST, 15, "l_wrist"],
+[poselm.RIGHT_WRIST, 16, "r_wrist"],
+[poselm.LEFT_PINKY, 17, "l_pinky"],
+[poselm.RIGHT_PINKY, 18, "r_pinky"],
+[poselm.LEFT_INDEX, 19, "l_index"],
+[poselm.RIGHT_INDEX, 20, "r_index"],
+[poselm.LEFT_THUMB, 21, "l_thumb"],
+[poselm.RIGHT_THUMB, 22, "r_thumb"],
+[poselm.LEFT_HIP, 23, "l_hip"],
+[poselm.RIGHT_HIP, 24, "r_hip"],
+[poselm.LEFT_KNEE, 25, "l_knee"],
+[poselm.RIGHT_KNEE, 26, "r_knee"],
+[poselm.LEFT_ANKLE, 27, "l_ankle"],
+[poselm.RIGHT_ANKLE, 28, "r_ankle"],
+[poselm.LEFT_HEEL, 29, "l_heel"],
+[poselm.RIGHT_HEEL, 30, "r_heel"],
+[poselm.LEFT_FOOT_INDEX, 31, "l_foot_index"],
+[poselm.RIGHT_FOOT_INDEX, 32, "r_foot_index"]
 ]
 
 # Load the MediaPipe Sign Language Detection model
@@ -176,8 +176,8 @@ class myClient(protocol.Protocol):
                 #    signs.append(sign)
 
                 # Comment out these lines as desired.  Please don't delete them
-                #self.sendAll(image, results.left_hand_landmarks, "l", mp_holistic.HAND_CONNECTIONS, hand)
-                #self.sendAll(image, results.right_hand_landmarks, "r", mp_holistic.HAND_CONNECTIONS, hand)
+                self.sendAll(image, results.left_hand_landmarks, "l", mp_holistic.HAND_CONNECTIONS, hand)
+                self.sendAll(image, results.right_hand_landmarks, "r", mp_holistic.HAND_CONNECTIONS, hand)
                 self.sendAll(image, results.pose_landmarks, "p", mp_holistic.POSE_CONNECTIONS, pose)
                 #self.sendAll(image, results.face_landmarks, "t", mp_holistic.FACEMESH_TESSELATION)
                 #self.sendAll(image, results.face_landmarks, "c", mp_holistic.FACEMESH_CONTOURS)
@@ -222,13 +222,19 @@ class myClient(protocol.Protocol):
                     lmk = landmarks.landmark[landmark]
                     self.constructPoint(landmark, suffix, str(landmark))
                     self.sendPoint(lmk, landmark, suffix, str(landmark), image)
-            elif suffix in ("_p", "_l", "_r"):
+            elif suffix in ("_p"):
+                for landmark in lmlist:
+                    lmk = landmarks.landmark[landmark[0]]
+                    # get rid of entire hands in pose landmarks
+                    if landmark[0] < poselm.LEFT_WRIST or landmark[0] > poselm.RIGHT_THUMB:
+                        self.constructPoint(landmark[0], suffix, landmark[2])
+                        self.sendPoint(lmk, landmark[0], suffix, landmark[2], image)
+            elif suffix in ("_l", "_r"):
                 for landmark in lmlist:
                     lmk = landmarks.landmark[landmark[0]]
                     self.constructPoint(landmark[0], suffix, landmark[2])
                     self.sendPoint(lmk, landmark[0], suffix, landmark[2], image)
             if suffix in ("_p"):
-
                 self.constructPoint(len(lmlist), suffix, "sacroiliac")
                 lhlmk = landmarks.landmark[poselm.LEFT_HIP] 
                 rhlmk = landmarks.landmark[poselm.RIGHT_HIP] 
@@ -283,11 +289,13 @@ class myClient(protocol.Protocol):
             else:
                 self.sendMPLine(f"{prefix}{connection[0]}", f"{prefix}{connection[1]}")
         if prefix in ("p"):
-            self.sendMPLine(f"p33", f"p23")
-            self.sendMPLine(f"p33", f"p24")
-            self.sendMPLine(f"p34", f"p11")
-            self.sendMPLine(f"p34", f"p12")
-            self.sendMPLine(f"p33", f"p34")
+            self.sendMPLine(f"p33", f"p23") # patch the sacroiliac to the left hip
+            self.sendMPLine(f"p33", f"p24") # patch the sacroiliac to the right hip
+            self.sendMPLine(f"p34", f"p11") # patch the vc7 to the left shoulder
+            self.sendMPLine(f"p34", f"p12") # patch the vc7 to the right shoulder
+            self.sendMPLine(f"p33", f"p34") # patch the sacroiliac to vc7
+            self.sendMPLine(f"p13", f"l0")  # patch the left elbow to the left wrist
+            self.sendMPLine(f"p14", f"r0")  # patch the right elbow to the right wrist
 
     def connectionMade(self):
         self.sendMessage("Marker: Start")  # Send marker for the first frame
@@ -380,7 +388,11 @@ class myClient(protocol.Protocol):
         #self.bufferMessage(f"YR:{relative_y}")
         #self.bufferMessage(f"ZR:{relative_z}")
         prefix = suffix[1:]+"_"
-        cv2.putText(img=image, text=prefix+joint_string, org=(relative_x, relative_y), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 0, 0), thickness=1, lineType=cv2.LINE_AA)
+        if prefix == "p_" and joint_string.startswith("l_"):
+            prefix = ""
+        elif prefix == "p_" and joint_string.startswith("r_"):
+            prefix = ""
+        cv2.putText(img=image, text=prefix+joint_string, org=(relative_x, relative_y), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 255, 0), thickness=1, lineType=cv2.LINE_AA)
 
     def runRecognizer(self):
         certainAmount = 5.0  # this is in seconds
