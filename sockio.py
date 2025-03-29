@@ -796,7 +796,7 @@ class myClient():
         entiremessage += self.footer
         entiremessage += message
         if self.sender == self.SocketIO:
-            print(entiremessage)
+            # print(entiremessage)
             sio.emit('python_clientavatar', entiremessage.encode())
 
     def bufferSend(self):
