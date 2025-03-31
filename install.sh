@@ -5,3 +5,4 @@ pip install twisted
 pip install opencv-python
 pip install mediapipe
 pip install "python-socketio[client]"
+python sockio.py

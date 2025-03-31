@@ -746,7 +746,7 @@ class myClient():
         elif self.sender == self.SocketIO:
             variable = f"{self.connection_counter}"
             # self.bufferMessage(f'SEGMENT|{variable}|DELETE|{fr}|{to}')
-            self.bufferMessage(f'SEGMENT|{variable}|INSERT|{fr}|{to}')
+            # self.bufferMessage(f'SEGMENT|{variable}|INSERT|{fr}|{to}')
             self.bufferMessage(f'SEGMENT|{variable}|UPDATE|{fr}|{to}')
             self.connection_counter = self.connection_counter + 1
 
