@@ -1,3 +1,13 @@
+Quick start:
+
+Run:
+```
+git clone https://coderextreme.net/coderextreme/deafblind
+cd deafblind
+bash install.sh
+```
+in a terminal
+
 Here's what to try.
 
 READ install.txt for installation
