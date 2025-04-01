@@ -587,47 +587,18 @@ MyLandmark = namedtuple('MyLandmark', 'x y z visibility')
 class myClient():
     def __init__(self):
         self.buffer = []
-        self.SocketIO = "SocketIO"
-        self.sender = self.SocketIO   # self.SocketIO
-        nick = self.sender+"User"   # SocketIOUser
-        self.red = sys.argv[1]
-        self.green = sys.argv[2]
-        self.blue = sys.argv[3]
-        self.offsetx = sys.argv[4]
-        self.offsety = sys.argv[5]
-        self.offsetz = sys.argv[6]
+        self.nick = sys.argv[1]
+        self.red = sys.argv[2]
+        self.green = sys.argv[3]
+        self.blue = sys.argv[4]
+        self.offsetx = sys.argv[5]
+        self.offsety = sys.argv[6]
+        self.offsetz = sys.argv[7]
         print(f'Joint color {self.red}|{self.green}|{self.blue} {self.offsetx}|{self.offsety}|{self.offsetz}')
-        print(f"Using {self.sender} as a protocol")
+        print(f"Using socket.io custom protocol, see sendMessage")
 
         self.sequenceno = -1
         self.connection_counter = 0
-        self.header = ""
-
-        recipients = "*"
-        self.header += "{"
-        self.header += "{"
-        self.header += recipients
-        self.header += "}"
-        self.header += "}"
-
-        self.header += "{"
-        self.header += self.sender
-        self.header += "}"
-
-        self.footer = ""
-        error = ""
-        self.footer += "{"
-        self.footer += error
-        self.footer += "}"
-
-        language = "en"
-        self.footer += "{"
-        self.footer += language
-        self.footer += "}"
-
-        self.footer += "{"
-        self.footer += nick
-        self.footer += "}"
 
 
     def startedEvent(self):
@@ -764,19 +735,17 @@ class myClient():
     def sendMessage(self, message):
         entiremessage = ""
 
-        entiremessage += self.header
-
         timestamp = time.time()
-        entiremessage += "{"
         entiremessage += str(int(timestamp))
-        entiremessage += "}"
+        entiremessage += "|"
 
         self.sequenceno += 1
-        entiremessage += "{"
         entiremessage += str(self.sequenceno)
-        entiremessage += "}"
 
-        entiremessage += self.footer
+        entiremessage += "|"
+        entiremessage += self.nick
+        entiremessage += ","
+
         entiremessage += message
         # print(entiremessage)
         sio.emit('python_clientavatar', entiremessage.encode())
@@ -839,8 +808,6 @@ class myClient():
 
     def runRecognizer(self):
         certainAmount = 5.0  # this is in seconds
-        if self.sender == self.Cppon:
-            self.bufferMessage("X3D X3D0 = X3D();")
 
 
 def main():
