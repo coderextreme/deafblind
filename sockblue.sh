@@ -1,1 +1,1 @@
-python sockio.py 0.0 0.0 1.0 # red green blue
+python sockio.py 0.0 0.0 1.0 100.0 0.0 0.0 # red green blue offset_z offset_y offset_z

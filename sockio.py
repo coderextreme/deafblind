@@ -587,16 +587,16 @@ MyLandmark = namedtuple('MyLandmark', 'x y z visibility')
 class myClient():
     def __init__(self):
         self.buffer = []
-        self.Impact = "Impact"
-        self.Mocap = "Mocap"
-        self.Cppon = "Cppon"
         self.SocketIO = "SocketIO"
-        self.sender = self.SocketIO   # one of self.Mocap, self.Cppon, self.Impact, self.SocketIO.  Mocap is most performant
-        nick = self.sender+"User"   # one of MocapUser, CpponUser, ImpactUser, SocketIOUser
+        self.sender = self.SocketIO   # self.SocketIO
+        nick = self.sender+"User"   # SocketIOUser
         self.red = sys.argv[1]
         self.green = sys.argv[2]
         self.blue = sys.argv[3]
-        print(f'{self.red}|{self.green}|{self.blue}')
+        self.offsetx = sys.argv[4]
+        self.offsety = sys.argv[5]
+        self.offsetz = sys.argv[6]
+        print(f'Joint color {self.red}|{self.green}|{self.blue} {self.offsetx}|{self.offsety}|{self.offsetz}')
         print(f"Using {self.sender} as a protocol")
 
         self.sequenceno = -1
@@ -727,28 +727,11 @@ class myClient():
                     self.sendPoint(lmk, landmark[0], suffix, landmark[2], image)
 
     def sendMPLine(self, fr, to):
-        if self.sender == self.Cppon:
-            variable = f"Line{self.connection_counter}"
-            self.bufferMessage(f"Line {variable} = Line();")
-            self.bufferMessage(f'{variable}.setFrom(CString("{fr}"));')
-            self.bufferMessage(f'{variable}.setTo(CString("{to}"));')
-            self.connection_counter = self.connection_counter + 1
-        elif self.sender == self.Mocap:
-            self.bufferMessage(f'F:{fr}')
-            self.bufferMessage(f'T:{to}')
-            self.connection_counter = self.connection_counter + 1
-        elif self.sender == self.Impact:
-            variable = f"{self.connection_counter}"
-            # self.bufferMessage(f'SEGMENT|{variable}|DELETE|{fr}|{to}')
-            self.bufferMessage(f'SEGMENT|{variable}|INSERT|{fr}|{to}')
-            self.bufferMessage(f'SEGMENT|{variable}|UPDATE|{fr}|{to}')
-            self.connection_counter = self.connection_counter + 1
-        elif self.sender == self.SocketIO:
-            variable = f"{self.connection_counter}"
-            # self.bufferMessage(f'SEGMENT|{variable}|DELETE|{fr}|{to}')
-            # self.bufferMessage(f'SEGMENT|{variable}|INSERT|{fr}|{to}')
-            self.bufferMessage(f'SEGMENT|{variable}|UPDATE|{fr}|{to}')
-            self.connection_counter = self.connection_counter + 1
+        variable = f"{self.connection_counter}"
+        # self.bufferMessage(f'SEGMENT|{variable}|DELETE|{fr}|{to}')
+        # self.bufferMessage(f'SEGMENT|{variable}|INSERT|{fr}|{to}')
+        self.bufferMessage(f'SEGMENT|{variable}|UPDATE|{fr}|{to}')
+        self.connection_counter = self.connection_counter + 1
 
         if self.connection_counter < 0:  # wrap around, I hope
             self.connection_counter = 0
@@ -795,9 +778,8 @@ class myClient():
 
         entiremessage += self.footer
         entiremessage += message
-        if self.sender == self.SocketIO:
-            # print(entiremessage)
-            sio.emit('python_clientavatar', entiremessage.encode())
+        # print(entiremessage)
+        sio.emit('python_clientavatar', entiremessage.encode())
 
     def bufferSend(self):
         message = " ".join(self.buffer)+"\n"
@@ -810,23 +792,9 @@ class myClient():
         self.buffer.append(message);
 
     def constructMPPoint(self, landmark, suffix, defn):
-        if self.sender == self.Cppon:
-            ptid = f"{landmark}{suffix}"
-            self.bufferMessage(f"Point Point{ptid} = Point();")
-            self.bufferMessage(f'Point{ptid}.setDEF(CString("{defn}");')
-        elif self.sender == self.Mocap:
-            prefix = suffix[1:]
-            ptid = f"{prefix}{landmark}"
-            self.bufferMessage(f"J:{defn}")
-            self.bufferMessage(f"L:{ptid}")
-        elif self.sender == self.Impact:
-            prefix = suffix[1:]
-            ptid = f"{prefix}{landmark}"
-            self.bufferMessage(f'NODE|{ptid}|INSERT|{self.red}|{self.green}|{self.blue}|0.0|0.0|0.0|0.0|0.0|0.0')
-        elif self.sender == self.SocketIO:
-            prefix = suffix[1:]
-            ptid = f"{prefix}{landmark}"
-            self.bufferMessage(f'NODE|{ptid}|INSERT|{self.red}|{self.green}|{self.blue}|0.0|0.0|0.0|0.0|0.0|0.0')
+        prefix = suffix[1:]
+        ptid = f"{prefix}{landmark}"
+        self.bufferMessage(f'NODE|{ptid}|INSERT|{self.red}|{self.green}|{self.blue}|0.0|0.0|0.0|{self.offsetx}|{self.offsety}|{self.offsetz}')
 
 
     def constructPoint(self, landmark, suffix, joint_string: str):
@@ -836,30 +804,13 @@ class myClient():
         self.constructMPPoint(landmark, suffix, f"{prefix}{joint_string}")
 
     def sendMPPoint(self, landmark, suffix, x, y, z):
-        if self.sender == self.Cppon:
-            xyz = "{"+f"{x}, {y}, {z}"+"}"
-            ptid = f"{landmark}{suffix}"
-            self.bufferMessage(f"Point{ptid}.setPoint(new float[]{xyz});")
-        elif self.sender == self.Mocap:
-            self.bufferMessage(f"X:{x}")
-            self.bufferMessage(f"Y:{y}")
-            self.bufferMessage(f"Z:{z}")
-        elif self.sender == self.Impact:
-            x = x*10-5
-            y = y*10-5
-            y = -y
-            z = z*10
-            prefix = suffix[1:]
-            ptid = f"{prefix}{landmark}"
-            self.bufferMessage(f'NODE|{ptid}|UPDATE|{self.red}|{self.green}|{self.blue}|{x}|{y}|{z}|0.0|0.0|0.0')
-        elif self.sender == self.SocketIO:
-            x = x*10-5
-            y = y*10-5
-            y = -y
-            z = z*10
-            prefix = suffix[1:]
-            ptid = f"{prefix}{landmark}"
-            self.bufferMessage(f'NODE|{ptid}|UPDATE|{self.red}|{self.green}|{self.blue}|{x}|{y}|{z}|0.0|0.0|0.0')
+        x = x*10-5
+        y = y*10-5
+        y = -y
+        z = z*10
+        prefix = suffix[1:]
+        ptid = f"{prefix}{landmark}"
+        self.bufferMessage(f'NODE|{ptid}|UPDATE|{self.red}|{self.green}|{self.blue}|{x}|{y}|{z}|{self.offsetx}|{self.offsety}|{self.offsetz}')
 
     def sendPoint(self, lmk, landmark, suffix, joint_string: str, image):
 
