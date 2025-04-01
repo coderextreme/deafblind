@@ -591,11 +591,12 @@ class myClient():
         self.Mocap = "Mocap"
         self.Cppon = "Cppon"
         self.SocketIO = "SocketIO"
-        if len(sys.argv) > 1:
-            self.sender = sys.argv[1]   # one of self.Mocap, self.Cppon, self.Impact, self.SocketIO.  Mocap is most performant
-        else:
-            print("Use 'Cppon', 'Mocap', 'SocketIO' or 'Impact' as a first parameter after the name of the python program")
-            self.sender = self.SocketIO   # one of self.Mocap, self.Cppon, self.Impact, self.SocketIO.  Mocap is most performant
+        self.sender = self.SocketIO   # one of self.Mocap, self.Cppon, self.Impact, self.SocketIO.  Mocap is most performant
+        nick = self.sender+"User"   # one of MocapUser, CpponUser, ImpactUser, SocketIOUser
+        self.red = sys.argv[1]
+        self.green = sys.argv[2]
+        self.blue = sys.argv[3]
+        print(f'{self.red}|{self.green}|{self.blue}')
         print(f"Using {self.sender} as a protocol")
 
         self.sequenceno = -1
@@ -624,7 +625,6 @@ class myClient():
         self.footer += language
         self.footer += "}"
 
-        nick = self.sender+"User"   # one of MocapUser, CpponUser, ImpactUser, SocketIOUser
         self.footer += "{"
         self.footer += nick
         self.footer += "}"
@@ -822,11 +822,11 @@ class myClient():
         elif self.sender == self.Impact:
             prefix = suffix[1:]
             ptid = f"{prefix}{landmark}"
-            self.bufferMessage(f'NODE|{ptid}|INSERT')
+            self.bufferMessage(f'NODE|{ptid}|INSERT|{self.red}|{self.green}|{self.blue}|0.0|0.0|0.0|0.0|0.0|0.0')
         elif self.sender == self.SocketIO:
             prefix = suffix[1:]
             ptid = f"{prefix}{landmark}"
-            self.bufferMessage(f'NODE|{ptid}|INSERT')
+            self.bufferMessage(f'NODE|{ptid}|INSERT|{self.red}|{self.green}|{self.blue}|0.0|0.0|0.0|0.0|0.0|0.0')
 
 
     def constructPoint(self, landmark, suffix, joint_string: str):
@@ -851,7 +851,7 @@ class myClient():
             z = z*10
             prefix = suffix[1:]
             ptid = f"{prefix}{landmark}"
-            self.bufferMessage(f'NODE|{ptid}|UPDATE|1|1|0|1|{x}|{y}|{z}|0.0|0.0|0.0')
+            self.bufferMessage(f'NODE|{ptid}|UPDATE|{self.red}|{self.green}|{self.blue}|{x}|{y}|{z}|0.0|0.0|0.0')
         elif self.sender == self.SocketIO:
             x = x*10-5
             y = y*10-5
@@ -859,7 +859,7 @@ class myClient():
             z = z*10
             prefix = suffix[1:]
             ptid = f"{prefix}{landmark}"
-            self.bufferMessage(f'NODE|{ptid}|UPDATE|1|1|0|1|{x}|{y}|{z}|0.0|0.0|0.0')
+            self.bufferMessage(f'NODE|{ptid}|UPDATE|{self.red}|{self.green}|{self.blue}|{x}|{y}|{z}|0.0|0.0|0.0')
 
     def sendPoint(self, lmk, landmark, suffix, joint_string: str, image):
 
