@@ -781,8 +781,7 @@ class myClient():
 
     def sendMPPoint(self, landmark, suffix, x, y, z):
         x = x*10-5
-        y = y*10-5
-        y = -y
+        y = 5-y*10
         z = z*10
         prefix = suffix[1:]
         ptid = f"{prefix}{landmark}"
