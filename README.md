@@ -1,10 +1,17 @@
 Quick start:
 
+Start JSONverse with:
+
+$ node index.js
+
+launch one of localhost links
+
 Run:
 ```
 git clone https://coderextreme.net/coderextreme/deafblind
 cd deafblind
-bash install.sh
+. install.sh
+bash sock.sh
 ```
 in a terminal
 
