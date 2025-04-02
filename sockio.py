@@ -9,6 +9,7 @@ import time
 from collections import namedtuple
 import sys
 import socketio
+import random
 
 # Create a Socket.IO client instance
 sio = socketio.Client()
@@ -587,14 +588,25 @@ MyLandmark = namedtuple('MyLandmark', 'x y z visibility')
 class myClient():
     def __init__(self):
         self.buffer = []
-        self.nick = sys.argv[1]
-        self.red = sys.argv[2]
-        self.green = sys.argv[3]
-        self.blue = sys.argv[4]
-        self.offsetx = sys.argv[5]
-        self.offsety = sys.argv[6]
-        self.offsetz = sys.argv[7]
-        print(f'Joint color {self.red}|{self.green}|{self.blue} {self.offsetx}|{self.offsety}|{self.offsetz}')
+        self.red =     [ random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1) ]
+        self.green =   [ random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1) ]
+        self.blue =    [ random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1) ]
+        if len(sys.argv) > 1:
+            self.nick =    [ sys.argv[1] ]
+            self.offsetx = [ sys.argv[2] ]
+            self.offsety = [ sys.argv[3] ]
+            self.offsetz = [ sys.argv[4] ]
+            if len(sys.argv) > 5:
+                self.nick.append(sys.argv[5])
+                self.offsetx.append(sys.argv[6])
+                self.offsety.append(sys.argv[7])
+                self.offsetz.append(sys.argv[8])
+                if len(sys.argv) > 9:
+                    self.nick.append(sys.argv[9])
+                    self.offsetx.append(sys.argv[10])
+                    self.offsety.append(sys.argv[11])
+                    self.offsetz.append(sys.argv[12])
+
         print(f"Using socket.io custom protocol, see sendMessage")
 
         self.sequenceno = -1
@@ -699,9 +711,8 @@ class myClient():
 
     def sendMPLine(self, fr, to):
         variable = f"{self.connection_counter}"
-        # self.bufferMessage(f'SEGMENT|{variable}|DELETE|{fr}|{to}')
-        # self.bufferMessage(f'SEGMENT|{variable}|INSERT|{fr}|{to}')
-        self.bufferMessage(f'SEGMENT|{variable}|UPDATE|{fr}|{to}')
+        for i in range(len(self.nick)):
+            self.bufferMessage(f'{self.nick[i]}|S|{variable}|U|{fr}|{to}')
         self.connection_counter = self.connection_counter + 1
 
         if self.connection_counter < 0:  # wrap around, I hope
@@ -742,10 +753,6 @@ class myClient():
         self.sequenceno += 1
         entiremessage += str(self.sequenceno)
 
-        entiremessage += "|"
-        entiremessage += self.nick
-        entiremessage += ","
-
         entiremessage += message
         # print(entiremessage)
         sio.emit('python_clientavatar', entiremessage.encode())
@@ -763,8 +770,8 @@ class myClient():
     def constructMPPoint(self, landmark, suffix, defn):
         prefix = suffix[1:]
         ptid = f"{prefix}{landmark}"
-        self.bufferMessage(f'NODE|{ptid}|INSERT|{self.red}|{self.green}|{self.blue}|0.0|0.0|0.0|{self.offsetx}|{self.offsety}|{self.offsetz}')
-
+        for i in range(len(self.nick)):
+            self.bufferMessage(f'{self.nick[i]}|J|{ptid}|I|{self.red[i]}|{self.green[i]}|{self.blue[i]}|0.0|0.0|0.0|{self.offsetx[i]}|{self.offsety[i]}|{self.offsetz[i]}')
 
     def constructPoint(self, landmark, suffix, joint_string: str):
         prefix = suffix[1:]+"_"
@@ -779,7 +786,8 @@ class myClient():
         z = z*10
         prefix = suffix[1:]
         ptid = f"{prefix}{landmark}"
-        self.bufferMessage(f'NODE|{ptid}|UPDATE|{self.red}|{self.green}|{self.blue}|{x}|{y}|{z}|{self.offsetx}|{self.offsety}|{self.offsetz}')
+        for i in range(len(self.nick)):
+            self.bufferMessage(f'{self.nick[i]}|J|{ptid}|U|{self.red[i]}|{self.green[i]}|{self.blue[i]}|{x}|{y}|{z}|{self.offsetx[i]}|{self.offsety[i]}|{self.offsetz[i]}')
 
     def sendPoint(self, lmk, landmark, suffix, joint_string: str, image):
 
