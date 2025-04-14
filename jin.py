@@ -754,8 +754,8 @@ class myClient():
     def constructMPPoint(self, landmark, suffix, joint_string):
         prefix = suffix[1:]
         ptid = f"{prefix}{landmark}"
-        for i in range(len(self.nick)):
-            self.bufferMessage(f'{self.nick[i]}|J|{ptid}|I|0.0|0.0|0.0|{joint_string}')
+        #for i in range(len(self.nick)):
+        #    self.bufferMessage(f'{self.nick[i]}|J|{ptid}|I|0.0|0.0|0.0|{joint_string}')
 
     def constructPoint(self, landmark, suffix, joint_string: str):
         prefix = suffix[1:]+"_"
@@ -766,6 +766,8 @@ class myClient():
     def sendMPPoint(self, landmark, suffix, x, y, z, joint_string):
         prefix = suffix[1:]
         ptid = f"{prefix}{landmark}"
+        x = x-0.5
+        y = 0.5-y
         for i in range(len(self.nick)):
             self.bufferMessage(f'{self.nick[i]}|J|{ptid}|U|{x}|{y}|{z}|{joint_string}')
 
