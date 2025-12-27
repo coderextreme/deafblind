@@ -4,8 +4,6 @@ Protocol Experiments with MediaPipe/Holistic and OpenCV.
 ---------------------------------------------------------------------------------------------------------------
 How to reconstruct the venv311 folder in the zip:
 
-Plug in webcam and open lens
-
 In Developer Powershell, run:
 
 Optional:
@@ -28,16 +26,18 @@ PS C:\> cd deafblind
 PS C:\deafblind> venv311\Scripts\activate
 PS C:\deafblind> python .\osc_server.py
 
-Press CTRL-C in osc_server.py window to exit
+Press CTRL-C in osc_server.py window to exit.
 ----------------------------------------------------------------------------------------------------------
 Run the client in PowerShell:
 
+Plug in webcam and open lens.
+
 PS C:\> cd deafblind
 PS C:\deafblind> venv311\Scripts\activate
-PS C:\deafblind> python .\osc.py Bob
+PS C:\deafblind> python .\osc.py Your_Username_Here
 
 Wait for video to come up, check other Powershell.
 
 Wave to yourself!  See server window go wild!
 
-Press ESC key in video to exit
+Press ESC key in video window to exit.
