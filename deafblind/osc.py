@@ -16,7 +16,9 @@ mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 
 # Create a Socket.IO client instance
-osc_client = udp_client.SimpleUDPClient("127.0.0.1", 39539)
+#osc_client = udp_client.SimpleUDPClient("127.0.0.1", 39539)
+osc_client = udp_client.SimpleUDPClient("127.0.0.1", 8000)
+#osc_client = udp_client.SimpleUDPClient("172.30.149.99", 8000)
 #osc_client = udp_client.SimpleUDPClient("coderextreme.net", 8000)
 
 # Define event handlers
