@@ -1,4 +1,4 @@
-Open Source Control/Virtual Motion Capture
+Open Source Control/Virtual Motion Capture https://protocol.vmc.info/english.html
 
 Protocol Experiments with MediaPipe/Holistic and OpenCV.
 ---------------------------------------------------------------------------------------------------------------
